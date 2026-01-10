@@ -1,0 +1,463 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="doc_title">कृषि मित्र - एआई फसल सलाहकार</title>
+
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <style>
+    /* KRISHI MITRA THEME COLORS */
+    :root {
+      --primary-color: #4caf50; /* Green */
+      --secondary-color: #388e3c; /* Darker Green */
+      --background-url: url('https://images.unsplash.com/photo-1625246333195-78d9c38ad449') center/cover;
+      --text-dark: #333;
+    }
+
+    /* GLOBAL STYLES */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    body {
+      background: var(--background-url);
+      height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+    }
+
+    /* Overlay for better readability */
+    body::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(0,0,0,0.5);
+        z-index: 1;
+    }
+
+    /* CARD STYLING */
+    .card {
+      background: white;
+      padding: 40px;
+      border-radius: 12px;
+      width: 100%;
+      max-width: 450px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      z-index: 2;
+      position: relative;
+    }
+
+    /* LANGUAGE DROPDOWN */
+    .lang-container {
+        position: absolute;
+        top: 20px;
+        right: 20px;
+    }
+    .lang-select {
+        padding: 5px;
+        border: 1px solid #ddd;
+        border-radius: 5px;
+        font-size: 0.8rem;
+        cursor: pointer;
+        outline: none;
+    }
+
+    /* HEADER/LOGO STYLING */
+    .logo-area {
+        display: flex;
+        gap: 10px;
+        justify-content: center;
+        align-items: center;
+        font-weight: 700;
+        font-size: 1.8rem;
+        color: var(--primary-color);
+        margin-bottom: 5px;
+    }
+
+    .logo-area span { color: var(--secondary-color); }
+    .logo-area i { font-size: 1.5rem; }
+
+    h2 {
+      text-align: center;
+      color: var(--text-dark);
+      margin-bottom: 25px;
+      font-size: 1.4rem;
+    }
+
+    h3 {
+      font-size: 1.0rem;
+      font-weight: 600;
+      color: var(--secondary-color);
+      margin-top: 20px;
+      margin-bottom: 10px;
+      border-left: 3px solid var(--primary-color);
+      padding-left: 10px;
+    }
+
+    /* INPUT STYLING */
+    input {
+      width: 100%;
+      padding: 10px 15px;
+      margin-bottom: 12px;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      font-size: 0.9rem;
+      transition: border-color 0.3s;
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 5px rgba(76, 175, 80, 0.5);
+    }
+
+    /* BUTTON STYLING */
+    button {
+      width: 100%;
+      padding: 12px;
+      background: var(--primary-color);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 5px;
+      font-weight: 600;
+      font-size: 1rem;
+      transition: background 0.3s;
+    }
+
+    button:hover {
+      background: var(--secondary-color);
+    }
+
+    /* SPECIFIC BUTTON COLOR */
+    #weatherInfo {
+        margin-top: 10px;
+        margin-bottom: 15px;
+        padding: 8px;
+        background: #e9f5e9;
+        border-radius: 4px;
+        font-size: 0.9rem;
+        color: var(--secondary-color);
+        text-align: center;
+    }
+    
+    /* OUTPUT STYLING */
+    .output {
+      margin-top: 20px;
+      background: #e9f5e9;
+      padding: 15px;
+      border-radius: 8px;
+      border: 1px solid var(--primary-color);
+      line-height: 1.6;
+      color: var(--text-dark);
+    }
+    .output b {
+        color: var(--secondary-color);
+    }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <div class="lang-container">
+      <select class="lang-select" id="languageDropdown">
+          <option value="hi" selected>हिंदी (Hindi)</option>
+          <option value="en">English</option>
+          <option value="kn">ಕನ್ನಡ (Kannada)</option>
+          <option value="ml">മലയാളം (Malayalam)</option>
+      </select>
+  </div>
+
+  <div class="logo-area">
+      <i class="fa-solid fa-seedling"></i>
+      <span>KRISHI MITRA</span>
+  </div>
+  <h2 data-i18n="main_title">एआई फसल सलाहकार</h2>
+
+  <h3><i class="fa-solid fa-flask"></i> <span data-i18n="h_soil">मिट्टी का विवरण (N-P-K)</span></h3>
+  <input type="number" id="N" placeholder="नाइट्रोजन (N) उदाहरण 90">
+  <input type="number" id="P" placeholder="फास्फोरस (P) उदाहरण 40">
+  <input type="number" id="K" placeholder="पोटेशियम (K) उदाहरण 40">
+
+  <h3><i class="fa-solid fa-cloud-sun"></i> <span data-i18n="h_weather">वर्तमान मौसम</span></h3>
+  <button onclick="fetchWeather()" data-i18n="btn_fetch_weather">वर्तमान मौसम प्राप्त करें</button>
+  <p id="weatherInfo" data-i18n="weather_placeholder">मौसम का डेटा यहां दिखाई देगा।</p>
+
+  <h3><i class="fa-solid fa-robot"></i> <span data-i18n="h_recommend">सिफारिश प्राप्त करें</span></h3>
+  <button onclick="getRecommendation()" data-i18n="btn_recommend">एआई फसल सिफारिश प्राप्त करें</button>
+
+  <div class="output" id="result" data-i18n="result_placeholder">
+    परिणाम यहां फसल की सिफारिश और उपज की भविष्यवाणी प्रदर्शित करेंगे।
+  </div>
+</div>
+
+<script>
+/* ================= CONFIG ================= */
+const BACKEND_API = "http://127.0.0.1:8000";
+const OPENWEATHER_API_KEY = "3081b138babb030c92442a664ca92ba4";
+/* ========================================= */
+
+let weather = {};
+let currentLang = 'hi'; // Default Language
+
+/* ================= TRANSLATIONS ================= */
+const translations = {
+    hi: {
+        doc_title: "कृषि मित्र - एआई फसल सलाहकार",
+        main_title: "एआई फसल सलाहकार",
+        h_soil: "मिट्टी का विवरण (N-P-K)",
+        h_weather: "वर्तमान मौसम",
+        h_recommend: "सिफारिश प्राप्त करें",
+        btn_fetch_weather: "वर्तमान मौसम प्राप्त करें",
+        btn_recommend: "एआई फसल सिफारिश प्राप्त करें",
+        weather_placeholder: "मौसम का डेटा यहां दिखाई देगा।",
+        result_placeholder: "परिणाम यहां फसल की सिफारिश और उपज की भविष्यवाणी प्रदर्शित करेंगे।",
+        ph_n: "नाइट्रोजन (N) उदाहरण 90",
+        ph_p: "फास्फोरस (P) उदाहरण 40",
+        ph_k: "पोटेशियम (K) उदाहरण 40",
+        
+        // JS Dynamic Strings
+        msg_fetching_loc: "स्थान प्राप्त कर रहा है...",
+        msg_fetching_data: "मौसम डेटा ला रहा है...",
+        msg_processing: "प्रक्रिया चल रही है...",
+        msg_data_fetched: "✅ डेटा प्राप्त हुआ:",
+        msg_weather_err: "❌ मौसम लाने में त्रुटि। पुनः प्रयास करें।",
+        msg_loc_denied: "❌ मौसम के लिए स्थान की अनुमति आवश्यक है।",
+        msg_enter_npk: "कृपया N, P, K मान दर्ज करें",
+        msg_fetch_first: "कृपया पहले मौसम डेटा प्राप्त करें",
+        msg_backend_err: "❌ एआई बैकएंड से संपर्क करते समय त्रुटि।",
+        res_complete: "✅ सिफारिश पूर्ण",
+        res_crop: "अनुशंसित फसल:",
+        res_yield: "अपेक्षित उपज:"
+    },
+    en: {
+        doc_title: "Krishi Mitra – AI Crop Advisor",
+        main_title: "AI Crop Advisor",
+        h_soil: "Soil Details (N-P-K)",
+        h_weather: "Current Weather",
+        h_recommend: "Get Recommendation",
+        btn_fetch_weather: "Auto Fetch Current Weather",
+        btn_recommend: "Get AI Crop Recommendation",
+        weather_placeholder: "Weather data will appear here.",
+        result_placeholder: "Results will display crop recommendation and yield prediction.",
+        ph_n: "Nitrogen (N) e.g. 90",
+        ph_p: "Phosphorus (P) e.g. 40",
+        ph_k: "Potassium (K) e.g. 40",
+
+        msg_fetching_loc: "Fetching Location...",
+        msg_fetching_data: "Fetching Weather Data...",
+        msg_processing: "Processing...",
+        msg_data_fetched: "✅ Data Fetched:",
+        msg_weather_err: "❌ Error fetching weather. Try again.",
+        msg_loc_denied: "❌ Location permission is required.",
+        msg_enter_npk: "Please enter N, P, K values",
+        msg_fetch_first: "Please fetch weather first",
+        msg_backend_err: "❌ An error occurred while contacting the AI backend.",
+        res_complete: "✅ Recommendation Complete",
+        res_crop: "Recommended Crop:",
+        res_yield: "Expected Yield:"
+    },
+    kn: {
+        doc_title: "ಕೃಷಿ ಮಿತ್ರ - AI ಬೆಳೆ ಸಲಹೆಗಾರ",
+        main_title: "AI ಬೆಳೆ ಸಲಹೆಗಾರ",
+        h_soil: "ಮಣ್ಣಿನ ವಿವರಗಳು (N-P-K)",
+        h_weather: "ಪ್ರಸ್ತುತ ಹವಾಮಾನ",
+        h_recommend: "ಶಿಫಾರಸು ಪಡೆಯಿರಿ",
+        btn_fetch_weather: "ಹವಾಮಾನವನ್ನು ಪಡೆಯಿರಿ",
+        btn_recommend: "AI ಬೆಳೆ ಶಿಫಾರಸು ಪಡೆಯಿರಿ",
+        weather_placeholder: "ಹವಾಮಾನ ಡೇಟಾ ಇಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ.",
+        result_placeholder: "ಫಲಿತಾಂಶಗಳು ಬೆಳೆ ಶಿಫಾರಸು ಮತ್ತು ಇಳುವರಿ ಮುನ್ಸೂಚನೆಯನ್ನು ತೋರಿಸುತ್ತವೆ.",
+        ph_n: "ಸಾರಜನಕ (N) ಉದಾ. 90",
+        ph_p: "ರಂಜಕ (P) ಉದಾ. 40",
+        ph_k: "ಪೊಟ್ಯಾಸಿಯಮ್ (K) ಉದಾ. 40",
+
+        msg_fetching_loc: "ಸ್ಥಳವನ್ನು ಪಡೆಯಲಾಗುತ್ತಿದೆ...",
+        msg_fetching_data: "ಹವಾಮಾನ ಮಾಹಿತಿ ತರಲಾಗುತ್ತಿದೆ...",
+        msg_processing: "ಪ್ರಕ್ರಿಯೆಗೊಳಿಸಲಾಗುತ್ತಿದೆ...",
+        msg_data_fetched: "✅ ಡೇಟಾ ಪಡೆಯಲಾಗಿದೆ:",
+        msg_weather_err: "❌ ಹವಾಮಾನ ಪಡೆಯುವಲ್ಲಿ ದೋಷ. ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+        msg_loc_denied: "❌ ಹವಾಮಾನಕ್ಕಾಗಿ ಸ್ಥಳದ ಅನುಮತಿ ಅಗತ್ಯವಿದೆ.",
+        msg_enter_npk: "ದಯವಿಟ್ಟು N, P, K ಮೌಲ್ಯಗಳನ್ನು ನಮೂದಿಸಿ",
+        msg_fetch_first: "ದಯವಿಟ್ಟು ಮೊದಲು ಹವಾಮಾನವನ್ನು ಪಡೆಯಿರಿ",
+        msg_backend_err: "❌ AI ಬ್ಯಾಕೆಂಡ್ ಸಂಪರ್ಕಿಸುವಲ್ಲಿ ದೋಷ.",
+        res_complete: "✅ ಶಿಫಾರಸು ಪೂರ್ಣಗೊಂಡಿದೆ",
+        res_crop: "ಶಿಫಾರಸು ಮಾಡಿದ ಬೆಳೆ:",
+        res_yield: "ನಿರೀಕ್ಷಿತ ಇಳುವರಿ:"
+    },
+    ml: {
+        doc_title: "കൃഷി മിത്ര - AI വിള ഉപദേഷ്ടാവ്",
+        main_title: "AI വിള ഉപദേഷ്ടാവ്",
+        h_soil: "മണ്ണിന്റെ വിവരങ്ങൾ (N-P-K)",
+        h_weather: "നിലവിലെ കാലാവസ്ഥ",
+        h_recommend: "ശുപാർശ നേടുക",
+        btn_fetch_weather: "കാലാവസ്ഥാ വിവരങ്ങൾ നേടുക",
+        btn_recommend: "AI വിള ശുപാർശ നേടുക",
+        weather_placeholder: "കാലാവസ്ഥാ വിവരങ്ങൾ ഇവിടെ കാണാം.",
+        result_placeholder: "വിള ശുപാർശയും വിളവ് പ്രവചനവും ഇവിടെ പ്രദർശിപ്പിക്കും.",
+        ph_n: "നൈട്രജൻ (N) ഉദാ. 90",
+        ph_p: "ഫോസ്ഫറസ് (P) ഉദാ. 40",
+        ph_k: "പൊട്ടാസ്യം (K) ഉദാ. 40",
+
+        msg_fetching_loc: "ലൊക്കേഷൻ എടുക്കുന്നു...",
+        msg_fetching_data: "കാലാവസ്ഥാ വിവരങ്ങൾ ശേഖരിക്കുന്നു...",
+        msg_processing: "പ്രോസസ്സിംഗ്...",
+        msg_data_fetched: "✅ ഡാറ്റ ലഭിച്ചു:",
+        msg_weather_err: "❌ കാലാവസ്ഥാ വിവരങ്ങൾ ലഭിക്കുന്നതിൽ പിശക്.",
+        msg_loc_denied: "❌ ലൊക്കേഷൻ അനുമതി ആവശ്യമാണ്.",
+        msg_enter_npk: "ദയവായി N, P, K മൂല്യങ്ങൾ നൽകുക",
+        msg_fetch_first: "ആദ്യം കാലാവസ്ഥാ വിവരങ്ങൾ നേടുക",
+        msg_backend_err: "❌ AI ബാക്കെൻഡുമായി ബന്ധപ്പെടുന്നതിൽ പിശക്.",
+        res_complete: "✅ ശുപാർശ പൂർത്തിയായി",
+        res_crop: "ശുപാർശ ചെയ്യുന്ന വിള:",
+        res_yield: "പ്രതീക്ഷിക്കുന്ന വിളവ്:"
+    }
+};
+
+/* -------- CHANGE LANGUAGE FUNCTION -------- */
+function setLanguage(lang) {
+    currentLang = lang;
+    const t = translations[lang];
+
+    // Update Text Content
+    document.querySelectorAll('[data-i18n]').forEach(element => {
+        const key = element.getAttribute('data-i18n');
+        if (t[key]) {
+            if (element.tagName === 'TITLE') document.title = t[key];
+            else element.textContent = t[key];
+        }
+    });
+
+    // Update Placeholders
+    document.getElementById("N").placeholder = t.ph_n;
+    document.getElementById("P").placeholder = t.ph_p;
+    document.getElementById("K").placeholder = t.ph_k;
+}
+
+// Event Listener for Dropdown
+document.getElementById('languageDropdown').addEventListener('change', function() {
+    setLanguage(this.value);
+});
+
+// Initialize Default Language (Hindi)
+document.addEventListener('DOMContentLoaded', () => {
+    setLanguage('hi'); 
+});
+
+/* -------- FETCH WEATHER FROM OPENWEATHER -------- */
+function fetchWeather() {
+  const t = translations[currentLang];
+  const weatherButton = document.querySelector('button[onclick="fetchWeather()"]');
+  
+  weatherButton.disabled = true;
+  weatherButton.innerText = t.msg_fetching_loc;
+  
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const lat = pos.coords.latitude;
+    const lon = pos.coords.longitude;
+    weatherButton.innerText = t.msg_fetching_data;
+
+    const url =
+      `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${OPENWEATHER_API_KEY}&units=metric`;
+
+    try {
+        const res = await fetch(url);
+        const data = await res.json();
+    
+        weather = {
+          temperature: data.main.temp,
+          humidity: data.main.humidity,
+          rainfall: data.rain ? (data.rain["1h"] || 0) : 0
+        };
+    
+        document.getElementById("weatherInfo").innerHTML =
+          `${t.msg_data_fetched} <b>${weather.temperature.toFixed(1)}°C</b> | <b>${weather.humidity}%</b> | <b>${weather.rainfall.toFixed(2)} mm</b>`;
+    } catch (e) {
+        document.getElementById("weatherInfo").innerText = t.msg_weather_err;
+    } finally {
+        weatherButton.disabled = false;
+        weatherButton.innerText = t.btn_fetch_weather;
+    }
+  },
+  () => {
+    document.getElementById("weatherInfo").innerText = t.msg_loc_denied;
+    weatherButton.disabled = false;
+    weatherButton.innerText = t.btn_fetch_weather;
+  });
+}
+
+/* -------- CALL BACKEND AI APIs -------- */
+async function getRecommendation() {
+  const t = translations[currentLang];
+  const N = Number(document.getElementById("N").value);
+  const P = Number(document.getElementById("P").value);
+  const K = Number(document.getElementById("K").value);
+
+  const resultDiv = document.getElementById("result");
+  const recommendButton = document.querySelector('button[onclick="getRecommendation()"]');
+
+  if (!N || !P || !K) {
+    alert(t.msg_enter_npk);
+    return;
+  }
+
+  if (!weather.temperature) {
+    alert(t.msg_fetch_first);
+    return;
+  }
+
+  recommendButton.disabled = true;
+  recommendButton.innerText = t.msg_processing;
+  resultDiv.innerHTML = t.msg_processing;
+
+  const payload = {
+    N: N,
+    P: P,
+    K: K,
+    temperature: weather.temperature,
+    humidity: weather.humidity,
+    rainfall: weather.rainfall
+  };
+
+  try {
+      /* --- Crop Recommendation --- */
+      const cropRes = await fetch(BACKEND_API + "/recommend-crop", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const cropData = await cropRes.json();
+    
+      /* --- Yield Prediction --- */
+      const yieldRes = await fetch(BACKEND_API + "/predict-yield", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      const yieldData = await yieldRes.json();
+
+      document.getElementById("result").innerHTML =
+        `${t.res_complete} <br>
+         <b>${t.res_crop}</b> ${cropData.recommended_crop}<br>
+         <b>${t.res_yield}</b> ${yieldData.expected_yield} kg/ha`;
+         
+  } catch (error) {
+    console.error("Backend API Error:", error);
+    resultDiv.innerHTML = t.msg_backend_err;
+  } finally {
+      recommendButton.disabled = false;
+      recommendButton.innerText = t.btn_recommend;
+  }
+}
+</script>
+
+</body>
+</html>
