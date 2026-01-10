@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Smart Irrigation Dashboard</title>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+      background:#f5f7fb;
+    }
+    #map {
+      height: 60vh;
+      width: 100%;
+      border-radius: 12px;
+    }
+    .card {
+      background:white;
+      border-radius:12px;
+      padding:1.25rem;
+      box-shadow:0 8px 20px rgba(0,0,0,0.08);
+    }
+    .legend-item {
+      display:flex;
+      align-items:center;
+      margin-bottom:6px;
+      font-size:0.85rem;
+    }
+    .color-box {
+      width:16px;
+      height:16px;
+      border-radius:4px;
+      margin-right:6px;
+    }
+    .lang-btn-active {
+      background:#2563eb;
+      color:white;
+    }
+    .lang-btn {
+      border-radius:999px;
+      padding:4px 10px;
+      font-size:0.8rem;
+      border:1px solid #d1d5db;
+      background:white;
+      cursor:pointer;
+    }
+    select, input {
+      border-radius:999px;
+      border:1px solid #d1d5db;
+      padding:4px 10px;
+      font-size:0.9rem;
+      outline:none;
+    }
+  </style>
+</head>
+<body class="p-4 md:p-6">
+
+  <div class="max-w-6xl mx-auto space-y-3">
+    <div class="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+      <div>
+        <h1 id="title-main" class="text-3xl font-extrabold text-gray-800">स्मार्ट सिंचाई डैशबोर्ड</h1>
+        <p id="subtitle" class="text-gray-500 text-sm mt-1">
+          जीपीएस और सैटेलाइट इमेज का उपयोग करके अपने खेत की जल स्थिति का पता लगाएं।
+        </p>
+      </div>
+      <div class="flex gap-2 justify-end">
+        <button id="btn-hi" class="lang-btn lang-btn-active">हिंदी</button>
+        <button id="btn-en" class="lang-btn">English</button>
+      </div>
+    </div>
+
+    <div class="card border-l-4 border-green-600">
+      <label id="label-crop" class="font-semibold block mb-2">फसल चुनें:</label>
+      <select id="crop-select" class="w-full">
+        <option value="paddy">🌾 धान (Paddy)</option>
+        <option value="banana">🍌 केला (Banana)</option>
+        <option value="coconut">🥥 नारियल (Coconut)</option>
+        <option value="vegetables">🥬 सब्जियां (Vegetables)</option>
+        <option value="maize">🌽 मक्का (Maize)</option>
+        <option value="rubber">🌳 रबर (Rubber)</option>
+        <option value="tea">🍃 चाय (Tea)</option>
+        <option value="coffee">☕ कॉफी (Coffee)</option>
+        <option value="sugarcane">🍬 गन्ना (Sugarcane)</option>
+        <option value="cotton">🧵 कपास (Cotton)</option>
+        <option value="pulses">🌱 दालें (Pulses)</option>
+        <option value="fruits">🍎 फल (Fruits)</option>
+        <option value="other">➕ अन्य फसल</option>
+      </select>
+      <input id="other-crop-input" class="w-full mt-2 hidden"
+             placeholder="फसल का नाम दर्ज करें">
+    </div>
+
+    <div id="map"></div>
+
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+
+      <div id="rec-card" class="card md:col-span-2 border-l-4 border-blue-500">
+        <div id="loading" class="text-center py-4">
+          <div class="animate-spin h-8 w-8 border-b-2 border-blue-500 rounded-full mx-auto mb-2"></div>
+          <p id="loading-text" class="text-gray-600 text-sm">
+            जीपीएस स्थान और सैटेलाइट डेटा प्राप्त किया जा रहा है...
+          </p>
+        </div>
+
+        <div id="output" class="hidden">
+          <h2 class="text-xl font-bold text-gray-800">
+            <span id="label-irrigation-status">खेत की स्थिति:</span>
+            <span id="status" class="font-extrabold"></span>
+          </h2>
+
+          <p id="summary" class="mt-2 text-gray-800 font-semibold"></p>
+
+          <div class="mt-3 text-xs sm:text-sm text-gray-700 space-y-1">
+            <p><span id="label-scene-date" class="font-semibold">सैटेलाइट इमेज की तारीख:</span>
+              <span id="scene-date"></span></p>
+            <p><span id="label-cloud" class="font-semibold">बादलों का प्रभाव:</span>
+              <span id="cloud-cover"></span></p>
+            <p><span id="label-rain-today" class="font-semibold">आज बारिश की संभावना:</span>
+              <span id="rain-today"></span></p>
+            <p><span id="label-rain-tmr" class="font-semibold">कल बारिश की संभावना:</span>
+              <span id="rain-tmr"></span></p>
+          </div>
+
+          <div id="actions" class="mt-4 text-sm text-gray-700 space-y-3"></div>
+        </div>
+      </div>
+
+      <div class="space-y-3">
+
+        <div class="card border-l-4 border-blue-500">
+          <h3 class="text-sm font-bold text-gray-800 mb-2">मिट्टी की नमी (Soil Moisture)</h3>
+          <div class="legend-item">
+            <div class="color-box" style="background:#0000FF;"></div>
+            <span>अधिक नमी</span>
+          </div>
+          <div class="legend-item">
+            <div class="color-box" style="background:#00FF00;"></div>
+            <span>सामान्य नमी</span>
+          </div>
+          <div class="legend-item">
+            <div class="color-box" style="background:#FFFF00;"></div>
+            <span>कम नमी</span>
+          </div>
+          <div class="legend-item">
+            <div class="color-box" style="background:#FF0000;"></div>
+            <span>सूखा</span>
+          </div>
+        </div>
+
+        <div class="card border-l-4 border-purple-500">
+          <h3 class="text-sm font-bold text-gray-800 mb-2">खेत का जल स्वास्थ्य (Heatmap)</h3>
+          <div class="legend-item"><div class="color-box" style="background:#ff0000;"></div><span>बहुत सूखा</span></div>
+          <div class="legend-item"><div class="color-box" style="background:#ffff00;"></div><span>सूखना शुरू</span></div>
+          <div class="legend-item"><div class="color-box" style="background:#00ff00;"></div><span>औसत जल</span></div>
+          <div class="legend-item"><div class="color-box" style="background:#0000ff;"></div><span>पर्याप्त जल</span></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+
+  <script>
+    const AGRO_API_KEY = "e718f637bf69a78853efce595ef92694";
+    const WEATHER_API_KEY = "YOUR_OPENWEATHER_API_KEY_HERE";
+
+    let currentLang = "hi"; // Default changed to Hindi
+    let map, fieldPolygonLayer, smiLayer, irrigationHeatLayer;
+    let baseLayers = {};
+    let overlayLayers = {};
+
+    const state = {
+      polyCoords: null,
+      stats: null,
+      ndviMean: null,
+      weather: null,
+      cropKey: "paddy",
+      finalMm: 0,
+      liters: 0
+    };
+
+    const cropWaterTable = {
+      paddy: 30, banana: 40, coconut: 20, vegetables: 25,
+      maize: 22, rubber: 24, tea: 20, coffee: 18,
+      sugarcane: 45, cotton: 30, pulses: 20, fruits: 25, other: 25
+    };
+
+    const i18n = {
+      hi: {
+        cropLabel: "फसल चुनें:",
+        loading: "जीपीएस स्थान और सैटेलाइट डेटा प्राप्त किया जा रहा है...",
+        irrStatus: "खेत की स्थिति:",
+        sceneDate: "सैटेलाइट इमेज की तारीख:",
+        cloud: "बादलों का प्रभाव:",
+        rainToday: "आज बारिश की संभावना:",
+        rainTomorrow: "कल बारिश की संभावना:",
+        status_good: "स्वस्थ",
+        status_moderate: "ध्यान देने की आवश्यकता",
+        status_dry: "बहुत सूखा",
+        summary_good: "मिट्टी में पर्याप्त नमी है। आज सिंचाई की आवश्यकता नहीं है।",
+        summary_moderate: "बारिश की संभावना के कारण, कम पानी का उपयोग करें।",
+        summary_dry: "खेत सूखा है। सिंचाई की आवश्यकता है।",
+        waterNeeded: liters => `💧 लगभग ${liters.toLocaleString()} लीटर पानी की आवश्यकता है।`,
+        waterExtra: "यह सुझाव बारिश के पूर्वानुमान और मिट्टी की नमी दोनों को ध्यान में रखता है।"
+      },
+      en: {
+        cropLabel: "Select Crop:",
+        loading: "Fetching GPS & satellite data...",
+        irrStatus: "Field Status:",
+        sceneDate: "Satellite Image Date:",
+        cloud: "Cloud Cover:",
+        rainToday: "Rain today:",
+        rainTomorrow: "Rain tomorrow:",
+        status_good: "Healthy",
+        status_moderate: "Moderate",
+        status_dry: "Dry",
+        summary_good: "Soil has enough moisture. No irrigation needed today.",
+        summary_moderate: "Some rain expected, so apply reduced water.",
+        summary_dry: "Field is dry. Irrigation is required.",
+        waterNeeded: liters => `💧 About ${liters.toLocaleString()} liters of water required.`,
+        waterExtra: "This suggestion considers both rain forecast and soil moisture."
+      }
+    };
+
+    function applyLanguage() {
+      const t = i18n[currentLang];
+      document.getElementById("label-crop").textContent = t.cropLabel;
+      document.getElementById("loading-text").textContent = t.loading;
+      document.getElementById("label-irrigation-status").textContent = t.irrStatus + " ";
+      document.getElementById("label-scene-date").textContent = t.sceneDate + " ";
+      document.getElementById("label-cloud").textContent = t.cloud + " ";
+      document.getElementById("label-rain-today").textContent = t.rainToday + " ";
+      document.getElementById("label-rain-tmr").textContent = t.rainTomorrow + " ";
+      
+      // Update Title and Subtitle based on language
+      if(currentLang === "hi") {
+          document.getElementById("title-main").textContent = "स्मार्ट सिंचाई डैशबोर्ड";
+          document.getElementById("subtitle").textContent = "जीपीएस और सैटेलाइट इमेज का उपयोग करके अपने खेत की जल स्थिति का पता लगाएं।";
+      } else {
+          document.getElementById("title-main").textContent = "Smart Irrigation Dashboard";
+          document.getElementById("subtitle").textContent = "Use GPS + satellite imagery to monitor field water levels.";
+      }
+    }
+
+    function getGPS() {
+      return new Promise(resolve => {
+        if (!navigator.geolocation) {
+          return resolve({ lat: 20.5937, lon: 78.9629 }); // India Center Fallback
+        }
+        navigator.geolocation.getCurrentPosition(
+          pos => resolve({ lat: pos.coords.latitude, lon: pos.coords.longitude }),
+          () => resolve({ lat: 20.5937, lon: 78.9629 }),
+          { enableHighAccuracy: true, timeout: 8000 }
+        );
+      });
+    }
+
+    function makePolygon(lat, lon, meters) {
+      const dLat = meters / 111000;
+      const dLon = meters / (111000 * Math.cos(lat * Math.PI / 180));
+      return [
+        [lat + dLat, lon - dLon],
+        [lat + dLat, lon + dLon],
+        [lat - dLat, lon + dLon],
+        [lat - dLat, lon - dLon],
+        [lat + dLat, lon - dLon]
+      ];
+    }
+
+    async function registerPolygon(lat, lon) {
+      try {
+        const coordsLatLon = makePolygon(lat, lon, 120);
+        const coordsGeoJSON = coordsLatLon.map(([la, lo]) => [lo, la]);
+        const body = {
+          name: "Field_" + Date.now(),
+          geo_json: {
+            type: "Feature",
+            properties: {},
+            geometry: { type: "Polygon", coordinates: [coordsGeoJSON] }
+          }
+        };
+        const res = await fetch(`https://api.agromonitoring.com/agro/1.0/polygons?appid=${AGRO_API_KEY}`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)
+          }
+        );
+        if (!res.ok) return null;
+        const json = await res.json();
+        return { polyId: json.id, coordsLatLon };
+      } catch { return null; }
+    }
+
+    async function fetchLatestScene(polyId) {
+      try {
+        const now = Math.floor(Date.now() / 1000);
+        const monthAgo = now - 30 * 24 * 3600;
+        const res = await fetch(`https://api.agromonitoring.com/agro/1.0/image/search?polyid=${polyId}&start=${monthAgo}&end=${now}&appid=${AGRO_API_KEY}`);
+        if (!res.ok) return null;
+        const arr = await res.json();
+        return arr.length ? arr[arr.length - 1] : null;
+      } catch { return null; }
+    }
+
+    async function fetchStats(polyId, dt) {
+      try {
+        const res = await fetch(`https://api.agromonitoring.com/agro/1.0/stats?polyid=${polyId}&dt=${dt}&appid=${AGRO_API_KEY}`);
+        return res.ok ? res.json() : null;
+      } catch { return null; }
+    }
+
+    async function fetchWeather(lat, lon) {
+      try {
+        if (!WEATHER_API_KEY || WEATHER_API_KEY.includes("YOUR_OPENWEATHER")) {
+          return { todayRain: 0, tomorrowRain: 5, desc: "Mock data" };
+        }
+        const res = await fetch(`https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${WEATHER_API_KEY}`);
+        if (!res.ok) return { todayRain: 0, tomorrowRain: 0, desc: "No data" };
+        const data = await res.json();
+        const now = Date.now() / 1000;
+        let todayRain = 0, tomorrowRain = 0;
+        for (const item of data.list) {
+          const diffH = (item.dt - now) / 3600;
+          const rain3h = item.rain?.["3h"] || 0;
+          if (diffH >= 0 && diffH < 24) todayRain += rain3h;
+          else if (diffH >= 24 && diffH < 48) tomorrowRain += rain3h;
+        }
+        return { todayRain, tomorrowRain, desc: data.list[0]?.weather?.[0]?.description || "No data" };
+      } catch { return { todayRain: 0, tomorrowRain: 0, desc: "No data" }; }
+    }
+
+    function computeIrrigationMm(cropKey, weather) {
+      const base = cropWaterTable[cropKey] ?? cropWaterTable.other;
+      const rainTotal = (weather?.todayRain || 0) + (weather?.tomorrowRain || 0);
+      let finalMm = base - (rainTotal * 2);
+      return Math.max(0, Math.round(finalMm));
+    }
+
+    function pointInPolygon(point, polygon) {
+      const y = point[0], x = point[1];
+      let inside = false;
+      for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+        const yi = polygon[i][0], xi = polygon[i][1];
+        const yj = polygon[j][0], xj = polygon[j][1];
+        if (((yi > y) !== (yj > y)) && (x < ((xj - xi) * (y - yi) / (yj - yi) + xi))) inside = !inside;
+      }
+      return inside;
+    }
+
+    function generateHeatPoints(poly, moisture) {
+      const lats = poly.map(p => p[0]), lons = poly.map(p => p[1]);
+      const minLat = Math.min(...lats), maxLat = Math.max(...lats);
+      const minLon = Math.min(...lons), maxLon = Math.max(...lons);
+      const rows = 18, cols = 18;
+      const latStep = (maxLat - minLat) / rows, lonStep = (maxLon - minLon) / cols;
+      const points = [];
+      for (let i = 0; i <= rows; i++) {
+        const lat = minLat + i * latStep;
+        for (let j = 0; j <= cols; j++) {
+          const lon = minLon + j * lonStep;
+          if (pointInPolygon([lat, lon], poly)) {
+            const value = Math.min(1, Math.max(0, moisture + (Math.random() - 0.5) * 0.2));
+            points.push([lat, lon, value]);
+          }
+        }
+      }
+      return points;
+    }
+
+    function renderIrrigationUI() {
+      const t = i18n[currentLang];
+      const { stats, weather, finalMm } = state;
+      document.getElementById("scene-date").textContent = stats?.dt ? new Date(stats.dt * 1000).toISOString().slice(0, 10) : "-";
+      document.getElementById("cloud-cover").textContent = stats?.clouds?.mean ? stats.clouds.mean.toFixed(1) + "%" : "-";
+      document.getElementById("rain-today").textContent = weather ? weather.todayRain.toFixed(1) + " mm" : "-";
+      document.getElementById("rain-tmr").textContent = weather ? weather.tomorrowRain.toFixed(1) + " mm" : "-";
+
+      const liters = finalMm * (120 * 120);
+      state.liters = liters;
+      let statusText, summaryText;
+      if (finalMm === 0) { statusText = t.status_good; summaryText = t.summary_good; }
+      else {
+        const baseMm = cropWaterTable[state.cropKey] ?? cropWaterTable.other;
+        statusText = finalMm < baseMm ? t.status_moderate : t.status_dry;
+        summaryText = finalMm < baseMm ? t.summary_moderate : t.summary_dry;
+      }
+      document.getElementById("status").textContent = statusText;
+      document.getElementById("summary").textContent = summaryText;
+      document.getElementById("actions").innerHTML = `<div class="p-3 bg-blue-50 rounded">${t.waterNeeded(liters)}</div><div class="p-3 bg-gray-50 rounded">${t.waterExtra}</div>`;
+    }
+
+    async function init() {
+      applyLanguage();
+      const gps = await getGPS();
+      map = L.map("map").setView([gps.lat, gps.lon], 16);
+      const normal = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(map);
+      const satellite = L.tileLayer("https://{s}.google.com/vt/lyrs=s&x={x}&y={y}&z={z}", { maxZoom: 20, subdomains:["mt0","mt1","mt2","mt3"] });
+
+      baseLayers = { [currentLang === "hi" ? "साधारण मैप" : "Normal Map"]: normal, [currentLang === "hi" ? "सैटेलाइट" : "Satellite"]: satellite };
+
+      const polyInfo = await registerPolygon(gps.lat, gps.lon);
+      const coords = polyInfo?.coordsLatLon || makePolygon(gps.lat, gps.lon, 120);
+      state.polyCoords = coords;
+
+      fieldPolygonLayer = L.polygon(coords, { color: "#22c55e", fillColor: "#4ade80", fillOpacity: 0.12, weight: 2 }).addTo(map);
+      overlayLayers[currentLang === "hi" ? "खेत की सीमा" : "Field Boundary"] = fieldPolygonLayer;
+      map.fitBounds(fieldPolygonLayer.getBounds(), { maxZoom: 18 });
+
+      let stats = null, ndviMean = 0.5;
+      if (polyInfo?.polyId) {
+        const scene = await fetchLatestScene(polyInfo.polyId);
+        if (scene?.dt) stats = await fetchStats(polyInfo.polyId, scene.dt);
+        if (stats?.ndvi?.mean) ndviMean = stats.ndvi.mean;
+        smiLayer = L.tileLayer(`https://api.agromonitoring.com/tile/1.0/smi/{z}/{x}/{y}?polyid=${polyInfo.polyId}&appid=${AGRO_API_KEY}`, { opacity: 0.75 }).addTo(map);
+        overlayLayers[currentLang === "hi" ? "मिट्टी की नमी" : "Soil Moisture"] = smiLayer;
+      }
+
+      state.stats = stats || { dt: Date.now() / 1000, clouds: { mean: 20 }, ndvi: { mean: ndviMean } };
+      state.ndviMean = ndviMean;
+      state.weather = await fetchWeather(gps.lat, gps.lon);
+      state.cropKey = document.getElementById("crop-select").value;
+      state.finalMm = computeIrrigationMm(state.cropKey, state.weather);
+
+      irrigationHeatLayer = L.heatLayer(generateHeatPoints(coords, ndviMean), { radius: 25, blur: 18, gradient: { 0.0: "#ff0000", 0.4: "#ffff00", 0.7: "#00ff00", 1.0: "#0000ff" } }).addTo(map);
+      overlayLayers[currentLang === "hi" ? "जल स्वास्थ्य (Heatmap)" : "Irrigation Heatmap"] = irrigationHeatLayer;
+
+      L.control.layers(baseLayers, overlayLayers).addTo(map);
+      document.getElementById("loading").classList.add("hidden");
+      document.getElementById("output").classList.remove("hidden");
+      renderIrrigationUI();
+    }
+
+    document.getElementById("btn-hi").addEventListener("click", () => {
+      currentLang = "hi";
+      document.getElementById("btn-hi").classList.add("lang-btn-active");
+      document.getElementById("btn-en").classList.remove("lang-btn-active");
+      applyLanguage();
+      renderIrrigationUI();
+    });
+
+    document.getElementById("btn-en").addEventListener("click", () => {
+      currentLang = "en";
+      document.getElementById("btn-en").classList.add("lang-btn-active");
+      document.getElementById("btn-hi").classList.remove("lang-btn-active");
+      applyLanguage();
+      renderIrrigationUI();
+    });
+
+    document.getElementById("crop-select").addEventListener("change", (e) => {
+      state.cropKey = e.target.value;
+      document.getElementById("other-crop-input").classList.toggle("hidden", state.cropKey !== "other");
+      if (state.weather) {
+        state.finalMm = computeIrrigationMm(state.cropKey, state.weather);
+        renderIrrigationUI();
+      }
+    });
+
+    init();
+  </script>
+</body>
+</html>
