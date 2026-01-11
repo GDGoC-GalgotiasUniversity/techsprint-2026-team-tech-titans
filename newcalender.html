@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Smart Crop Calendar — Weather, Pest & Soil (Auto Location)</title>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+
+<style>
+:root{
+  --bg1: linear-gradient(180deg,#163a14,#0b2a09);
+  --card: rgba(255,255,255,0.08);
+  --muted: rgba(255,255,255,0.75);
+  --accent: #ffd54a;
+  --good: rgba(34,197,94,0.15);
+  --warn: rgba(245,158,11,0.12);
+  --bad: rgba(239,68,68,0.12);
+}
+*{box-sizing:border-box;font-family: 'Segoe UI', Roboto, Arial, sans-serif}
+body{
+  margin:0;padding:20px;background: url("https://images.unsplash.com/photo-1500382017468-9049fed747ef?q=80&w=1400&auto=format&fit=crop") center/cover fixed, var(--bg1);
+  color:#fff;-webkit-font-smoothing:antialiased;
+}
+.container{max-width:980px;margin:20px auto;padding:18px}
+
+.header-container {
+    width: 100%; padding: 25px; background: linear-gradient(to right, rgba(0,0,0,0.35), rgba(0,0,0,0.15));
+    border-radius: 18px; margin-bottom: 20px; backdrop-filter: blur(8px); box-shadow: 0 10px 35px rgba(0, 0, 0, 0.35);
+}
+.header-left { display:flex; align-items:center; gap:18px; }
+.header-container h1 { font-size:2.4rem; margin:0; color:#fff; letter-spacing:0.5px; font-weight:700; }
+.subtitle { margin:3px 0 0; font-size:1.15rem; color:#d6e8d6; opacity:0.9; }
+
+.intro-box { margin-top:15px; padding:20px; background: rgba(255,255,255,0.15); border-radius:14px; backdrop-filter: blur(7px); border:1px solid rgba(255,255,255,0.12); box-shadow:0 8px 25px rgba(0,0,0,0.25); }
+.intro-box p { margin:0; font-size:1.05rem; line-height:1.5rem; color:#f5f5f5; }
+
+.box{background:var(--card);backdrop-filter:blur(8px);padding:24px;border-radius:18px;margin-top:20px;box-shadow:0 8px 30px rgba(0,0,0,0.4);border:1px solid rgba(255,255,255,0.1)}
+.row{display:flex;gap:18px;flex-wrap:wrap}
+.col{flex:1;min-width:220px}
+label{display:block;font-weight:600;margin-bottom:8px;color:var(--muted);font-size:0.95rem}
+input[type="date"], select, input[type="text"], input[type="number"]{
+  width:100%;padding:12px;border-radius:10px;border:none;outline:none;font-size:1rem;background:rgba(255,255,255,0.92);color:#111;box-shadow:inset 0 2px 4px rgba(0,0,0,0.1);transition:0.2s;
+}
+input:focus{background:#fff;box-shadow:0 0 0 3px rgba(255,213,74,0.4)}
+.btn{display:inline-block;padding:12px 20px;border-radius:12px;background:#2e7d32;border:none;color:#fff;font-weight:700;cursor:pointer;transition:0.2s;box-shadow:0 4px 12px rgba(0,0,0,0.2)}
+.btn:hover{background:#388e3c;transform:translateY(-1px)}
+.btn.secondary{background:#1565c0}
+.btn.secondary:hover{background:#1976d2}
+.output{margin-top:25px}
+.result{padding:25px;border-radius:18px;background:linear-gradient(180deg, rgba(255,255,255,0.12), rgba(255,255,255,0.05));box-shadow:0 12px 40px rgba(0,0,0,0.5);border:1px solid rgba(255,255,255,0.15)}
+.timeline-item{padding:14px;border-left:4px solid var(--accent);background:rgba(255,255,255,0.05);margin-bottom:12px;border-radius:0 10px 10px 0}
+.tag{padding:5px 10px;border-radius:6px;font-size:0.85rem;font-weight:700;display:inline-block;margin-bottom:5px}
+.tag.good{background:#22c55e;color:#fff}
+.tag.warn{background:#f59e0b;color:#fff}
+.tag.bad{background:#ef4444;color:#fff}
+.status { margin-top:12px; font-size:0.95rem; color:#e6f4ea; background: rgba(0,0,0,0.25); padding:10px 15px; border-radius:10px; display:inline-block; border:1px solid rgba(255,255,255,0.1); }
+.top-controls { display:flex; gap:12px; justify-content:flex-end; align-items:center; margin-bottom:15px; background:rgba(0,0,0,0.2); padding:10px; border-radius:12px; }
+.lang-label, .voice-label { color:#fff; font-weight:700; font-size:0.9rem; }
+.lang-select, .voice-select { padding:8px; border-radius:8px; border:none; background:#fff; color:#333; font-weight:600; }
+.tts-btn { background:rgba(255,255,255,0.1); color:#fff; border:1px solid rgba(255,255,255,0.2); padding:8px 15px; border-radius:8px; cursor:pointer; transition:0.2s; font-weight:600; }
+.tts-btn:hover { background:rgba(255,255,255,0.2); }
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="top-controls">
+    <label id="lblLangSelect" class="lang-label" for="langSelect">Language</label>
+    <select id="langSelect" class="lang-select">
+      <option value="hi" selected>हिन्दी (Hindi)</option>
+      <option value="en">English</option>
+      <option value="ml">മലയാളം (Malayalam)</option>
+    </select>
+    <label id="lblVoiceSelect" class="voice-label" for="voiceSelect">Voice</label>
+    <select id="voiceSelect" class="voice-select" style="max-width:200px"></select>
+    <button id="testTtsBtn" class="tts-btn">🔊 Test</button>
+  </div>
+
+  <div class="header-container">
+    <div class="header-left">
+      <div>
+        <h1 id="title">🌾 Smart Crop Calendar</h1>
+        <p id="subtitle" class="subtitle">Weather • Soil • Pest Prediction</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="intro-box">
+    <p id="quickStart">🌟 <b>Quick Start:</b> Choose crop, sowing date & soil type.</p>
+    <div id="locStatus" class="status">Requesting location…</div>
+  </div>
+
+  <div class="box">
+    <div class="row">
+      <div class="col">
+        <label id="lblCrop" for="crop">Select Crop</label>
+        <select id="crop"></select>
+      </div>
+      <div class="col">
+        <label id="lblSowDate" for="sowDate">Sowing Date</label>
+        <input type="date" id="sowDate">
+      </div>
+      <div class="col">
+        <label id="lblSoilType" for="soilType">Soil Type</label>
+        <select id="soilType"></select>
+      </div>
+    </div>
+
+    <hr style="margin:20px 0;opacity:0.1"/>
+
+    <div class="row">
+      <div class="col">
+        <label id="lblCity" for="owCity">City</label>
+        <input type="text" id="owCity" placeholder="City Name">
+      </div>
+      <div style="display:flex;align-items:end;gap:10px;padding-bottom:2px">
+        <button class="btn" onclick="fetchWeather()"><span id="btnFetchText">Fetch Weather</span></button>
+        <button class="btn secondary" onclick="useManualWeather()"><span id="btnManualText">Manual</span></button>
+      </div>
+    </div>
+
+    <div class="row" style="margin-top:15px">
+      <div class="col">
+        <label id="lblManualWeather">Temp / Humidity / Rain</label>
+        <div style="display:flex;gap:10px">
+          <input type="number" id="manualTemp" placeholder="°C">
+          <input type="number" id="manualHum" placeholder="%">
+          <select id="manualRain"></select>
+        </div>
+      </div>
+      <div class="col">
+        <label id="lblWeatherNotes">Weather Notes</label>
+        <input type="text" id="weatherNotes">
+      </div>
+    </div>
+
+    <div style="margin-top:20px;display:flex;justify-content:space-between;align-items:center">
+      <button class="btn" style="padding:15px 30px;font-size:1.1rem" onclick="generateCalendar()"><span id="btnGenerateText">Generate Calendar</span></button>
+      <div id="footerTip" style="font-size:0.85rem;opacity:0.8">Tip: Allow location for automatic weather.</div>
+    </div>
+  </div>
+
+  <div id="output" class="output"></div>
+</div>
+
+<script>
+const i18n = {
+  hi: {
+    title: "🌾 स्मार्ट कृषि कैलेंडर",
+    subtitle: "मौसम • मिट्टी • कीट भविष्यवाणी — ऑटो लोकेशन",
+    quickStart: "🌟 <b>त्वरित शुरुआत:</b> फसल, बुवाई की तारीख और मिट्टी चुनें। पेज ऑटो-लोकेशन का उपयोग करेगा।",
+    selectCrop: "फसल चुनें", sowDate: "बुवाई की तारीख", soilType: "मिट्टी का प्रकार", city: "शहर",
+    fetchWeather: "मौसम प्राप्त करें", useManual: "मैनुअल", manualWeather: "मैनुअल मौसम", weatherNotes: "नोट्स",
+    generate: "कैलेंडर बनाएं", tip: "सुझाव: स्वचालित मौसम के लिए स्थान अनुमति दें।",
+    testSample: "यह हिंदी में एक परीक्षण ध्वनि संदेश है।", readCalendar: "कैलेंडर सुनें", readWeather: "मौसम सुनें",
+    language: "भाषा", voice: "आवाज़", test: "🔊 टेस्ट", localService: " (स्थानीय)",
+    cropNames: { wheat: "गेहूं", rice: "धान (चावल)", maize: "मक्का", sugarcane: "गन्ना", millet: "बाजरा" },
+    soilOptions: { loam: "दोमट (Loam)", sandy: "रेतीली (Sandy)", clay: "चिकनी (Clay)" },
+    rainOptions: { no: "बारिश नहीं", light: "हल्की बारिश", heavy: "भारी बारिश" },
+    tempPlaceholder: "तापमान °C", humPlaceholder: "नमी %", notesPlaceholder: "नोट्स", humSuffix: "% नमी",
+    cityTranslations: { 'Nagpur': 'नागपुर', 'Lucknow': 'लखनऊ' },
+    calTitle: "📌 फसल कैलेंडर", liveForecast: "लाइव पूर्वानुमान", manualWeatherTag: "मैनुअल मौसम",
+    rainExpected: "बारिश की संभावना", noRain: "बारिश नहीं", landPrep: "खेत की तैयारी", prepNote: " (बुवाई से 7 दिन पहले)",
+    fert1: "पहली खाद", fert2: "दूसरी खाद", irrigation: "सिंचाई", pestWindow: "कीट निगरानी", harvest: "कटाई का समय",
+    soilSuggestion: "🌱 मिट्टी सुझाव", adjustedFertilizer: "समायोजित उर्वरक (किग्रा/एकड़):",
+    pestAssessment: "⚠️ कीट मूल्यांकन — ", risk: " जोखिम", weatherNotesTitle: "🛠️ मौसम नोट्स", highRisk: "उच्च", mediumRisk: "मध्यम", lowRisk: "कम"
+  },
+  ml: {
+    title: "🌾 സ്മാർട്ട് കൃഷി കലണ്ടർ",
+    subtitle: "കാലാവസ്ഥ • മണ്ണ് • കീടനാശിനി പ്രവചനം",
+    quickStart: "🌟 <b>ശൈലി:</b> വിള, നടപ്പുസമയം & മണ്ണിന്റെ തരം തിരഞ്ഞെടുക്കുക.",
+    selectCrop: "വിള തിരഞ്ഞെടുക്കുക", sowDate: "വിതർത്തൽ തിയതി", soilType: "മണ്ണിന്റെ തരം", city: "നഗരം",
+    fetchWeather: "കാലാവസ്ഥ എടുക്കുക", useManual: "മാനുവൽ", manualWeather: "മാനുവൽ കാലാവസ്ഥ", weatherNotes: "കുറിപ്പുകൾ",
+    generate: "കലണ്ടർ തയ്യാറാക്കൂ", tip: "നുറുങ്ങ്: ഓട്ടോ ലൊക്കേഷൻ അനുവദിക്കുക.",
+    testSample: "ഇതൊരു മലയാളത്തിലുള്ള ടെസ്റ്റ് ശബ്ദമാണ്.", readCalendar: "കലണ്ടർ വായിക്കൂ", readWeather: "കാലാവസ്ഥ വായിക്കൂ",
+    language: "ഭാഷ", voice: "വോയിസ്", test: "🔊 ടെസ്റ്റ്", localService: " (പ്രാദേശികം)",
+    cropNames: { wheat: "ഗോതമ്പ്", rice: "നെല്ല്", maize: "ചോളം", sugarcane: "കരിമ്പ്", millet: "ചോളം/തിന" },
+    soilOptions: { loam: "പശിമരാശി (Loam)", sandy: "മണൽ (Sandy)", clay: "ചെളി (Clay)" },
+    rainOptions: { no: "മഴ പ്രതീക്ഷിക്കുന്നില്ല", light: "നേരിയ മഴ", heavy: "കനത്ത മഴ" },
+    tempPlaceholder: "ഊഷ്മാവ് °C", humPlaceholder: "ഈർപ്പം %", notesPlaceholder: "കുറിപ്പുകൾ", humSuffix: "% ഈർപ്പം",
+    cityTranslations: { 'Nagpur': 'നാഗ്പൂർ', 'Lucknow': 'ലഖ്നൗ' },
+    calTitle: "📌 വിളയുടെ കലണ്ടർ", liveForecast: "തത്സമയ പ്രവചനം", manualWeatherTag: "മാനുവൽ",
+    rainExpected: "മഴ പ്രതീക്ഷിക്കുന്നു", noRain: "മഴയില്ല", landPrep: "ഭൂമി ഒരുക്കൽ", prepNote: " (7 ദിവസം മുമ്പ്)",
+    fert1: "ഒന്നാം വളം", fert2: "രണ്ടാം വളം", irrigation: "നനച്ചു തുടങ്ങുന്നത്", pestWindow: "കീട നിരീക്ഷണം", harvest: "വിളവെടുപ്പ്",
+    soilSuggestion: "🌱 മണ്ണിന്റെ നിർദ്ദേശം", adjustedFertilizer: "ക്രമീകരിച്ച വളം (ഏക്കറിന്):",
+    pestAssessment: "⚠️ കീട-രോഗ വിലയിരുത്തൽ — ", risk: " റിസ്ക്", weatherNotesTitle: "🛠️ കാലാവസ്ഥ കുറിപ്പുകൾ", highRisk: "ഉയർന്ന", mediumRisk: "ഇടത്തരം", lowRisk: "കുറഞ്ഞ"
+  },
+  en: {
+    title: "🌾 Smart Crop Calendar",
+    subtitle: "Weather • Soil • Pest Prediction — Auto Location",
+    quickStart: "🌟 <b>Quick Start:</b> Choose crop, sowing date & soil type.",
+    selectCrop: "Select Crop", sowDate: "Sowing Date", soilType: "Soil Type", city: "City",
+    fetchWeather: "Fetch Weather", useManual: "Manual", manualWeather: "Manual Weather", weatherNotes: "Weather Notes",
+    generate: "Generate Calendar", tip: "Tip: Allow location for automatic weather.",
+    testSample: "This is a test TTS sample in English.", readCalendar: "Read Calendar", readWeather: "Weather Notes",
+    language: "Language", voice: "Voice", test: "🔊 Test", localService: " (local)",
+    cropNames: { wheat: "Wheat", rice: "Rice", maize: "Maize", sugarcane: "Sugarcane", millet: "Millet" },
+    soilOptions: { loam: "Loam (balanced)", sandy: "Sandy (drains fast)", clay: "Clay (holds water)" },
+    rainOptions: { no: "No rain expected", light: "Light rain", heavy: "Heavy rain" },
+    tempPlaceholder: "Temp °C", humPlaceholder: "Humidity %", notesPlaceholder: "Notes", humSuffix: "% hum",
+    cityTranslations: { 'Nagpur': 'Nagpur', 'Lucknow': 'Lucknow' },
+    calTitle: "📌 Crop Calendar", liveForecast: "Live forecast", manualWeatherTag: "Manual",
+    rainExpected: "Rain expected", noRain: "No rain", landPrep: "Land Preparation", prepNote: " (7 days before)",
+    fert1: "1st Fertilizer", fert2: "2nd Fertilizer", irrigation: "Irrigation Start", pestWindow: "Pest Monitoring", harvest: "Harvest",
+    soilSuggestion: "🌱 Soil Suggestion", adjustedFertilizer: "Adjusted fertilizer (kg/acre):",
+    pestAssessment: "⚠️ Pest Assessment — ", risk: " risk", weatherNotesTitle: "🛠️ Weather Notes", highRisk: "High", mediumRisk: "Medium", lowRisk: "Low"
+  }
+};
+
+let currentLang = 'hi'; // DEFAULT CHANGED TO HINDI
+const cropDB = [
+  { id:"wheat", duration:140, fert1:20, fert2:50, irrigation:15, pestWindow:70, pestSensitivity:"medium", fertilizerDosageKgPerAcre:{urea:40,dap:30} },
+  { id:"rice", duration:120, fert1:25, fert2:45, irrigation:10, pestWindow:60, pestSensitivity:"high", fertilizerDosageKgPerAcre:{urea:60,dap:40} },
+  { id:"maize", duration:110, fert1:18, fert2:40, irrigation:12, pestWindow:55, pestSensitivity:"medium", fertilizerDosageKgPerAcre:{urea:45,dap:35} },
+  { id:"sugarcane", duration:330, fert1:30, fert2:90, irrigation:20, pestWindow:120, pestSensitivity:"low", fertilizerDosageKgPerAcre:{urea:80,dap:50} },
+  { id:"millet", duration:95, fert1:15, fert2:35, irrigation:10, pestWindow:50, pestSensitivity:"low", fertilizerDosageKgPerAcre:{urea:30,dap:20} }
+];
+
+let voices = [];
+const synth = window.speechSynthesis;
+
+function populateVoiceList() {
+  voices = synth.getVoices().sort((a,b) => a.name.localeCompare(b.name));
+  const voiceSelect = document.getElementById('voiceSelect');
+  voiceSelect.innerHTML = '';
+  const t = i18n[currentLang];
+  voices.forEach((v, i) => {
+    const opt = document.createElement('option');
+    opt.value = i;
+    opt.textContent = `${v.name} — ${v.lang}${v.localService ? t.localService : ''}`;
+    voiceSelect.appendChild(opt);
+  });
+  const pref = voices.findIndex(v => v.lang.toLowerCase().startsWith(currentLang));
+  if(pref >= 0) voiceSelect.value = pref;
+}
+
+function speak(text, langHint) {
+  synth.cancel();
+  const utter = new SpeechSynthesisUtterance(text);
+  const sel = document.getElementById('voiceSelect').value;
+  if(voices[sel]) utter.voice = voices[sel];
+  utter.lang = (langHint === 'hi' ? 'hi-IN' : langHint === 'ml' ? 'ml-IN' : 'en-US');
+  synth.speak(utter);
+}
+
+function applyLanguage() {
+  const t = i18n[currentLang];
+  document.getElementById('title').textContent = t.title;
+  document.getElementById('subtitle').textContent = t.subtitle;
+  document.getElementById('quickStart').innerHTML = t.quickStart;
+  document.getElementById('lblCrop').textContent = t.selectCrop;
+  document.getElementById('lblSowDate').textContent = t.sowDate;
+  document.getElementById('lblSoilType').textContent = t.soilType;
+  document.getElementById('lblCity').textContent = t.city;
+  document.getElementById('btnFetchText').textContent = t.fetchWeather;
+  document.getElementById('btnManualText').textContent = t.useManual;
+  document.getElementById('lblManualWeather').textContent = t.manualWeather;
+  document.getElementById('lblWeatherNotes').textContent = t.weatherNotes;
+  document.getElementById('btnGenerateText').textContent = t.generate;
+  document.getElementById('footerTip').textContent = t.tip;
+  document.getElementById('lblLangSelect').textContent = t.language;
+  document.getElementById('lblVoiceSelect').textContent = t.voice;
+  document.getElementById('testTtsBtn').textContent = t.test;
+
+  const cropSel = document.getElementById('crop');
+  const oldCrop = cropSel.value;
+  cropSel.innerHTML = cropDB.map(c => `<option value="${c.id}">${t.cropNames[c.id]}</option>`).join('');
+  if(oldCrop) cropSel.value = oldCrop;
+
+  const soilSel = document.getElementById('soilType');
+  soilSel.innerHTML = Object.entries(t.soilOptions).map(([k,v]) => `<option value="${k}">${v}</option>`).join('');
+  
+  const rainSel = document.getElementById('manualRain');
+  rainSel.innerHTML = Object.entries(t.rainOptions).map(([k,v]) => `<option value="${k}">${v}</option>`).join('');
+}
+
+document.getElementById('langSelect').addEventListener('change', (e) => {
+  currentLang = e.target.value;
+  applyLanguage();
+  populateVoiceList();
+});
+
+document.getElementById('testTtsBtn').addEventListener('click', () => {
+  speak(i18n[currentLang].testSample, currentLang);
+});
+
+async function fetchWeather() {
+  const city = document.getElementById('owCity').value || "Delhi";
+  const apiKey = "3081b138babb030c92442a664ca92ba4";
+  try {
+    const r = await fetch(`https://api.openweathermap.org/data/2.5/forecast?q=${city}&units=metric&appid=${apiKey}`);
+    const data = await r.json();
+    const cur = data.list[0];
+    document.getElementById('manualTemp').value = Math.round(cur.main.temp);
+    document.getElementById('manualHum').value = cur.main.humidity;
+    window.latestWeather = { temp: cur.main.temp, hum: cur.main.humidity, rain: cur.weather[0].main.toLowerCase().includes('rain') };
+    document.getElementById('weatherNotes').value = i18n[currentLang].liveForecast;
+  } catch(e) { alert("Error fetching weather"); }
+}
+
+function generateCalendar() {
+  const cropId = document.getElementById('crop').value;
+  const sowDate = document.getElementById('sowDate').value;
+  if(!sowDate) return alert("Please select date");
+  const crop = cropDB.find(c => c.id === cropId);
+  const soil = document.getElementById('soilType').value;
+  const t = i18n[currentLang];
+
+  const temp = Number(document.getElementById('manualTemp').value) || 25;
+  const hum = Number(document.getElementById('manualHum').value) || 60;
+  
+  let risk = t.lowRisk;
+  if(hum > 75 && temp > 20) risk = t.highRisk;
+  else if(hum > 60) risk = t.mediumRisk;
+
+  let html = `<div class="result"><h2>${t.calTitle}: ${t.cropNames[cropId]}</h2>`;
+  html += `<div class="timeline-item"><b>${t.landPrep}:</b> ${addDays(sowDate, -7)} ${t.prepNote}</div>`;
+  html += `<div class="timeline-item"><b>${t.fert1}:</b> ${addDays(sowDate, crop.fert1)}</div>`;
+  html += `<div class="timeline-item"><b>${t.irrigation}:</b> ${addDays(sowDate, crop.irrigation)}</div>`;
+  html += `<div class="timeline-item"><b>${t.pestWindow}:</b> ${addDays(sowDate, crop.pestWindow)} <span class="tag bad">${t.pestAssessment}${risk}</span></div>`;
+  html += `<div class="timeline-item" style="border-left-color:#2e7d32"><b>${t.harvest}:</b> ${addDays(sowDate, crop.duration)}</div>`;
+  html += `<button class="tts-btn" onclick="speakCalendar('${t.cropNames[cropId]} calendar generated. Harvest on ${addDays(sowDate, crop.duration)}')">${t.readCalendar}</button></div>`;
+  
+  document.getElementById('output').innerHTML = html;
+}
+
+function addDays(date, days) {
+  const d = new Date(date); d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+function speakCalendar(txt) { speak(txt, currentLang); }
+function useManualWeather() { alert("Enter data manually"); }
+
+// Auto Location
+if (navigator.geolocation) {
+  navigator.geolocation.getCurrentPosition(async (pos) => {
+    const lat = pos.coords.latitude; const lon = pos.coords.longitude;
+    const r = await fetch(`https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=3081b138babb030c92442a664ca92ba4`);
+    const d = await r.json();
+    document.getElementById('owCity').value = d.name;
+    document.getElementById('locStatus').textContent = "Location: " + d.name;
+    fetchWeather();
+  }, () => { document.getElementById('locStatus').textContent = "Location denied."; });
+}
+
+if (speechSynthesis.onvoiceschanged !== undefined) speechSynthesis.onvoiceschanged = populateVoiceList;
+applyLanguage();
+populateVoiceList();
+</script>
+</body>
+</html>
